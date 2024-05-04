@@ -1,78 +1,63 @@
+import pandas as pd
+from time import sleep
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-import csv
-from time import sleep
+from bs4 import BeautifulSoup
+import requests
+URL = 'https://www.itpassportsiken.com/word/'
 
-junle_list = ['企業活動(113)', 'システム開発技術(21)', '基礎理論(14)']
-a_texts = [] 
-words = []
-driver = webdriver.Chrome()
-sleep(2)
-driver.get('https://www.itpassportsiken.com/word/')
-sleep(2)
-# a_list_elements = driver.find_elements(By.CLASS_NAME, 'index')
-# for a_list_element in a_list_elements:
-#     li_elements = a_list_element.find_elements(By.TAG_NAME, 'li')
-#     sleep(1)
-#     for li_element in li_elements:
-#         a_texts.append(li_element.text)
-for junle in junle_list:
-    driver.find_elements(By.LINK_TEXT, junle)[0].click()
-    sleep(2)
-    b_list_elements = driver.find_elements(By.CLASS_NAME, 'wordLink.cf')
-    for b_list_element in b_list_elements:
-        li_elements = b_list_element.find_elements(By.TAG_NAME, 'li')
+
+
+driver = webdriver.Chrome() # Chromeを指定
+
+def main():
+    print('start')
+    main_words, main_urls = selenium() # 単語とURL取得
+    main_texts = maketext(main_urls) # テキスト取得
+    makecsv(main_words, main_texts, main_urls, 'management') # csv作成
+
+def makecsv(words, texts, urls, csv_name):
+    data = {
+        '語句' : words,
+        '語句の意味' : texts,
+        'URL' : urls
+    }
+    df_data = pd.DataFrame(data)
+    file_path = 'csv/' + csv_name + '.csv'
+    df_data.to_csv(file_path, index=False, mode='x', encoding="utf-8")
+
+def selenium():
+    words = []
+    urls = []
+    driver.get(URL)
+    driver.find_elements(By.LINK_TEXT, 'システム開発技術(21)')[0].click()
+    sleep(1)
+    list_elements = driver.find_elements(By.CLASS_NAME, 'wordLink.cf')
+    for list_element in list_elements:
+        li_elements = list_element.find_elements(By.TAG_NAME, 'li')
         for li_element in li_elements:
-            # if(li_element.text == 'Created TensorFlow Lite XNNPACK delegate for CPU.'): break
-            # words.append(li_element.text)
             word = li_element.text
-            print(word)
-            driver.find_elements(By.LINK_TEXT, word)[0].click()
-            # text = driver.find_element(By.XPATH, '//*[@id="quizQWrap"]/div').text
-            # URL = driver.current_url
-            # print(word, text, URL)
-            # b_texts.append(li_element.text)
-            sleep(2)
-            driver.back()
-            # sleep(2)
-            # driver.find_elements(By.XPATH, '//*[@id="mainCol"]/div[1]/a[3]')[0].click()
-print(words)
-# header = ['語句', '語句の意味', 'URL']
-# with open('sample.csv', 'w') as f:
-#     writer = csv.writer(f)
-#     writer.writerow(header)
-#     writer.writerow(b_texts)
-# f.close()
-# driver.find_elements(By.LINK_TEXT, a_texts[0])[0].click()
-# b_list_elements = driver.find_elements(By.CLASS_NAME, 'wordLink.cf')
-# sleep(1)
-# for b_list_element in b_list_elements:
-#     li_elements = b_list_element.find_elements(By.TAG_NAME, 'li')
-#     for li_element in li_elements:
-#         b_texts.append(li_element.text)
-#         sleep(2)
-# print(a_texts)
-# print(texts)
-# sleep(2)
-# a_list = driver.find_elements(By.LINK_TEXT, '企業活動(113)')
-# //*[@id="mainCol"]/div[2]/ol[1]/li[2]/a
-# a_list = driver.find_elements(By.XPATH, '//*[@id="mainCol"]/div[2]/ol[1]/li[1]/a')
-# a_list[0].click()
-# sleep(2)
-# a_list_elements = driver.find_elements(By.CLASS_NAME, 'wordLink.cf')
-# for a_list_element in a_list_elements:
-#     li_elements = a_list_element.find_elements(By.TAG_NAME, 'li')
-#     for li_element in li_elements:
-#         texts.append(li_element.text)
-# print(texts)
-# sleep(2)
-# b_list = driver.find_elements(By.XPATH, '//*[@id="mainCol"]/div[2]/ul[1]/li[1]/a')
-# word = b_list[0].text
-# b_list[0].click()
-# sleep(2)
-# text = driver.find_element(By.XPATH, '//*[@id="quizQWrap"]/div').text
-# URL = driver.current_url
-# print(word, text, URL)
+            words.append(word)
+            url = URL + word + '.html'
+            urls.append(url)
+            sleep(1)
+    driver.quit()
+    print('単語とURL取得完了')        
+    return words, urls
 
-driver.quit()
+def maketext(urls):
+    texts = []
+    for url in urls:
+        print(url)
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        text = soup.find('div', id='quizQWrap').text
+        texts.append(text)
+        driver.quit()
+        print('text取得完了')
+        sleep(1)
+    return texts
+
+if __name__ == '__main__':
+    main()
